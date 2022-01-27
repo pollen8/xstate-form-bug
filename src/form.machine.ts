@@ -6,6 +6,7 @@
 
 import {
   ActorRef,
+  assign,
   State,
 } from 'xstate';
 import { createModel } from 'xstate/lib/model';
@@ -62,23 +63,48 @@ export const createFormMachine = <T extends Object>({
       errors: {} as Record<keyof Partial<T>, any>,
       touched: [],
     },
-    initial: 'initialise',
+    initial: 'done',
     states: {
-      initialise: {
-        invoke: {
-          src: 'loadData',
-          onDone: {
-            target: 'done',
-          },
-          onError: {
-            target: 'error',
-          }
+      done: {
+        initial: 'idle',
+        id: 'done',
+        on: {
+          'SET_FORM_DATA': '.update',
         },
+        states: {
+          idle: {},
+          update: {
+            entry: 'updateTouched',
+            invoke: {
+              src: 'validateTouched',
+              onDone: {
+                actions: 'updateErrors',
+                target: '#done',
+              },
+            },
+          },
+        }
       },
-      done: {},
       error: {},
     }
   },
     {
+      actions: {
+        updateTouched: assign({
+          touched: (context, event: any) => {
+            const keys = Object.keys(event.data) as (keyof T)[];
+            return Array.from(new Set([
+              ...context.touched,
+              ...keys,
+            ]));
+          }
+        }),
+        updateErrors: assign({
+          errors: (context, event: any) => event.data.errors
+        }),
+      },
+      services: {
+        validateTouched: (context) => Promise.resolve({errors: {'fileName': 'bad name'}})
+      }
     });
 };

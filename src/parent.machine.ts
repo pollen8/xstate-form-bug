@@ -19,11 +19,12 @@ interface FormData {
 }
 
 const parentModel = createModel({
-  items: [] as Item[],
+  data: {},
   formActor: {} as BuildFormActorRef<FormData>,
 }, {
   events: {
     'SAVE': () => ({}),
+    'SET_FORM_DATA': (data: Partial<FormData>) => ({ data }),
   }
 });
 
@@ -35,31 +36,17 @@ const formMachine = createFormMachine<FormData>({
 
 export const parentMachine = parentModel.createMachine({
   id: 'parentMachine',
-  initial: 'initialise',
+  initial: 'idle',
   entry: [
     assign({
       formActor: () => spawn(formMachine, {
         autoForward: true,
         name: 'form',
-        sync: true,
+        // sync: true,
       })
     })
   ],
   states: {
-    initialise: {
-      invoke: {
-        src: 'loadItems',
-        onDone: {
-          actions: (context, event: any) => context.items = event.data,
-          target: 'idle',
-        },
-      },
-    },
     idle: {},
-    save: {
-      invoke: {
-        src: 'save',
-      },
-    },
   }
 });
